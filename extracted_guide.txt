@@ -1,0 +1,318 @@
+FinGuard-India
+Step-by-Step Implementation Guide
+Building an Indian Financial Regulatory Compliance Guard + Chatbot
+Purpose. This guide converts the FinGuard research idea into a practical student research project. The recommended implementation is an Indian-regulation, regulation-grounded financial chatbot with query-level and response-level compliance checking. It is designed as an extension/application of the FinGuard paper, not a claim that the original paper itself implemented this exact architecture.
+1. What We Are Building
+The final system will accept a user's financial question, check whether the request creates a regulatory-compliance risk, retrieve relevant Indian regulatory text when appropriate, generate a response, check that response again, and either show it or replace/block it with a safe response.
+Target architecture:
+User
+  ↓
+Query Compliance Guard
+  ↓
+SAFE ───────────────→ Regulatory Retrieval → LLM → Response Guard → User
+  ↓
+RISKY → Policy Decision → Safe refusal / compliant alternative → User
+2. Project Scope — Freeze This First
+Do not begin by collecting every Indian financial regulation. Start with one jurisdiction and a manageable regulatory domain, then expand only if the first pipeline works.
+Decision
+Recommended starting choice
+Reason
+Jurisdiction
+India
+Matches the proposed research gap in the FinGuard paper.
+Initial regulator/domain
+SEBI / securities & investor-facing compliance
+Manageable scope with diverse compliance scenarios.
+Initial documents
+≈10 official documents
+Enough to validate the pipeline before scaling.
+Initial benchmark
+≈500–1,000 labeled examples
+Large enough for a student baseline; expandable later.
+LLM
+Open-weight model
+Allows reproducible experiments without depending entirely on a paid API.
+Vector store
+FAISS
+Simple local retrieval and easy Python integration.
+UI
+Streamlit
+Fastest way to demonstrate the chatbot.
+Important: final regulatory categories must be derived from the actual documents you select. Do not copy the Chinese FinGuard taxonomy and simply rename it.
+3. Phase 1 — Collect Official Regulatory Documents
+Goal: create a clean, traceable regulatory source collection.
+3.1 Where to obtain documents
+SEBI official website: https://www.sebi.gov.in/legal.html
+RBI official website: https://www.rbi.org.in/ (add later if the scope expands to banking/payment regulation)
+FIU-IND official website: https://fiuindia.gov.in/ (add later for a focused AML component)
+Use official regulator publications as the primary source; avoid random blogs or scraped summaries as regulatory ground truth.
+3.2 What to collect
+For the first iteration, select documents that cover different compliance situations, such as investor protection, disclosures, investment advisers, research analysts, fraudulent/unfair practices, insider trading, and intermediary conduct.
+For every document, record:
+regulator
+title
+document type
+publication/effective date
+official URL
+downloaded filename
+version/status if available
+3.3 Folder structure
+FinGuard-India/├── data/│   ├── regulations/│   │   └── sebi/│   └── processed/├── metadata/│   └── regulations.csv├── datasets/│   ├── raw/│   ├── taxonomy/│   └── benchmark/├── src/│   ├── ingestion/│   ├── retrieval/│   ├── guard/│   ├── chatbot/│   └── evaluation/├── experiments/├── notebooks/├── app/└── README.md
+3.4 Metadata CSV
+id,regulator,title,date,url,file,domain,status1,SEBI,"Document title","2026-...","https://...","document_01.pdf","securities","current"2,SEBI,"Document title","2026-...","https://...","document_02.pdf","securities","current
+4. Phase 2 — Extract and Clean the Regulations
+Goal: convert PDFs into structured text while preserving section/clause boundaries.
+Pipeline:
+PDF
+↓
+Text extraction (PyMuPDF)
+↓
+Remove headers/footers and obvious noise
+↓
+Preserve headings, sections, clauses, page numbers
+↓
+Structured JSON
+4.1 Suggested JSON format
+{  "regulator": "SEBI",  "document": "Document title",  "section": "Section / regulation number",  "page": 12,  "text": "Original clause text...",  "source_url": "https://..."}
+4.2 Quality check
+Open 5–10 random extracted pages and compare them with the PDF.
+Check that section numbers are not lost.
+Check that tables and bullet points are not badly merged.
+If a PDF is scanned, add OCR rather than trusting empty extracted text.
+5. Phase 3 — Extract Compliance Points
+A regulation is not yet a training label. Convert each relevant clause into a concise compliance point: what an institution/person must do, must not do, or must disclose.
+Example format:
+{  "rule_id": "SEBI_001",  "source_section": "...",  "compliance_point": "The regulated entity must ...",  "risk_if_violated": "..."}
+At this stage, use an LLM to assist extraction if desired, but keep the original clause beside the generated compliance point and perform human review. The original regulation is the source of truth.
+6. Phase 4 — Build the Indian Compliance Taxonomy
+Taxonomy means a hierarchy of categories. The goal is to discover a defensible set of Indian financial compliance-risk categories from the regulations rather than inventing labels first.
+Recommended pipeline:
+Compliance points
+↓
+Text embeddings
+↓
+HDBSCAN clustering
+↓
+Cluster inspection / LLM-assisted summaries
+↓
+Human review
+↓
+Final categories + subcategories
+6.1 Embeddings
+An embedding converts text into a numerical vector that captures semantic information. Similar compliance points tend to have nearby representations. A SentenceTransformers model can be used for the first prototype.
+6.2 HDBSCAN
+HDBSCAN is a density-based clustering algorithm. It groups points that naturally form dense regions and can leave unusual points as noise. This is useful when you do not know the correct number of categories beforehand.
+6.3 Taxonomy output
+category_id,category_name,definition,source_rule_idsC01,Example category,"Definition based on reviewed regulations","SEBI_001;SEBI_014"C02,Example category,"Definition based on reviewed regulations","SEBI_008;SEBI_022" 
+7. Phase 5 — Create Training and Benchmark Data
+Create examples from the taxonomy and source regulations. Keep training and test sources separated to avoid leakage.
+7.1 Query types
+Clearly compliant questions
+Clearly non-compliant requests
+Ambiguous questions requiring context
+Paraphrases of the same intent
+Indirect/obfuscated requests
+Benign questions containing compliance-related keywords
+Safe educational questions about a regulated topic
+7.2 Query + response labels
+Label both the user query and the generated response. This matters because a safe question can receive an unsafe answer.
+{  "id": "EX_001",  "query": "...",  "query_label": "safe",  "query_category": null,  "response": "...",  "response_label": "unsafe",  "response_category": "C02",  "source_rule_ids": ["SEBI_014"]}
+7.3 Human annotation
+Use at least two reviewers for a meaningful subset. Record disagreements and resolve them through a documented consensus process. Do not treat an LLM-generated label as ground truth.
+8. Phase 6 — Adversarial Augmentation
+Create harder versions of existing examples so the detector learns intent rather than memorizing keywords. Examples include paraphrasing, indirect intent, role/context changes, and harmless-looking framing.
+Example:
+Base intent:"How can I evade a financial reporting requirement?"Harder variants:- indirect wording- hypothetical framing- role-play framing- euphemisms- multi-turn context- benign context followed by a risky request
+For safety and evaluation, generate adversarial examples for testing the guard; do not build a dataset whose purpose is to provide real-world evasion instructions.
+9. Phase 7 — Build the Regulation Retrieval System (RAG)
+Goal: retrieve the most relevant regulatory clauses for a user's question or a detected risk.
+Pipeline:
+Regulation chunks
+↓
+SentenceTransformer embeddings
+↓
+FAISS index
+↓
+User query embedding
+↓
+Top-k relevant clauses
+↓
+LLM receives query + retrieved evidence
+9.1 Retrieval record
+{  "chunk_id": "SEBI_DOC1_P12_C4",  "score": 0.82,  "regulator": "SEBI",  "section": "...",  "text": "...",  "source_url": "..."}
+Keep the source identifier with every retrieved chunk so the final UI can show where the regulatory evidence came from.
+10. Phase 8 — Implement the Compliance Guard
+Start with a simple baseline before fine-tuning. The baseline can be a prompted open-weight LLM classifier. Later, fine-tune a smaller model with your labeled dataset.
+Target classifier output:
+{  "label": "unsafe",  "category": "C02",  "confidence": 0.91}
+The exact JSON format is your application design; it is not required to match the FinGuard paper's internal implementation.
+11. Phase 9 — Implement the Two-Checkpoint Chatbot
+Recommended production-style flow:
+1. User submits a question.
+2. Query Guard classifies it.
+3. If clearly risky, do not send it to the normal answer-generation path; route to a safe-response policy.
+4. If allowed, retrieve relevant regulatory context.
+5. Send the question + relevant evidence + response policy to the LLM.
+6. Run the generated response through the Response Guard.
+7. If compliant, show it.
+8. If risky, discard/regenerate or return a safe alternative.
+11.1 Pseudocode
+def handle_query(user_query):    query_result = guard.check(user_query)    if query_result.is_unsafe:        return safe_response(            reason=query_result.category        )    evidence = retriever.search(user_query, top_k=5)    draft = llm.generate(        query=user_query,        regulatory_context=evidence    )    response_result = guard.check(        user_query + "\n" + draft    )    if response_result.is_unsafe:        return safe_response(            reason=response_result.category,            evidence=evidence        )    return draft
+12. Phase 10 — Safe Response / Policy Layer
+The detector tells the application that a risk exists. A separate policy layer decides what the chatbot should do.
+Detection result
+Policy action
+User-facing behavior
+Safe
+Allow
+Answer normally, grounded in retrieved sources where relevant.
+Risky but answerable safely
+Constrain
+Give a compliant explanation without facilitating the risky action.
+Clearly evasion/fraud assistance
+Refuse
+Refuse the harmful instructions and offer lawful/educational alternatives.
+Uncertain
+Escalate/caution
+Avoid confident legal claims; provide general information and cite the relevant source.
+13. Phase 11 — Build the UI
+A simple Streamlit interface can show:
+Chat history
+Assistant answer
+Compliance status (for demo/research mode)
+Risk category when detected
+Relevant regulation/document
+Section/clause/page reference
+A short explanation of why the system restricted or qualified the answer
+For a real user-facing product, avoid exposing internal model confidence as if it were a legal certainty. The demo can distinguish model classification from legal advice.
+14. Phase 12 — Evaluation
+You need two levels of evaluation: detector performance and end-to-end chatbot performance.
+14.1 Detector metrics
+Metric
+What it tells you
+Precision
+When the model flags something, how often is the flag correct?
+Recall
+How many of the actual risky examples did the model catch?
+F1
+Single summary of precision and recall; useful for comparing models.
+Confusion matrix
+Shows safe→unsafe and unsafe→safe mistakes.
+Per-category F1
+Shows which compliance categories are difficult.
+14.2 Robustness evaluation
+Direct vs indirect wording
+Paraphrases
+Obfuscated intent
+Multi-turn context
+Benign keyword traps
+Jailbreak-style attempts
+Unseen regulatory documents
+14.3 End-to-end metrics
+Unsafe response rate
+False refusal rate on benign questions
+Citation/evidence accuracy
+Regulation retrieval Recall@k
+Response compliance rate
+Latency
+15. Phase 13 — Establish the Research Baseline
+Do not jump directly to the proposed improved system. Build a baseline so you can measure whether the improvement actually helps.
+Recommended experimental ladder:
+Baseline A: General LLM prompted as a compliance classifier.
+Baseline B: Retrieval + prompted LLM classifier.
+Baseline C: Fine-tuned compliance guard.
+Proposed system: Fine-tuned guard + regulatory retrieval + response guard + your selected research improvement.
+16. Phase 14 — Choose the Research Contribution
+The FinGuard paper already demonstrates strong financial compliance detection, Chinese regulatory grounding, adversarial financial augmentation, and adaptation to unseen institution-specific policies. Therefore, do not claim those capabilities as new without a clearly different method or evaluation.
+Three candidate directions to investigate:
+Direction
+Core idea
+Main experiment
+Risk
+Indian regulatory adaptation
+Build an Indian benchmark and taxonomy.
+Compare general LLM vs Indian compliance guard.
+May look like adaptation unless methodology adds something new.
+Dynamic regulatory RAG
+Make compliance knowledge updateable without retraining the guard.
+Old vs updated regulation; stale-model vs retrieved-current-rule.
+Requires careful versioning and temporal evaluation.
+Jailbreak robustness
+Stress-test and improve detection under generic jailbreak/indirect-intent attacks.
+Direct vs adversarial/jailbreak test sets.
+Requires a carefully designed safe evaluation set.
+17. Suggested Technology Stack
+Layer
+First choice
+Purpose
+Programming
+Python
+End-to-end ML/RAG pipeline
+PDF extraction
+PyMuPDF
+Extract regulatory text
+Embeddings
+SentenceTransformers
+Semantic representation
+Clustering
+HDBSCAN
+Discover taxonomy groups
+Vector search
+FAISS
+Retrieve relevant clauses
+LLM
+Qwen/open-weight model
+Answer generation / baseline classifier
+Fine-tuning
+LoRA/QLoRA
+Efficient specialization
+Backend
+FastAPI
+API layer
+Demo UI
+Streamlit
+Chat interface
+Evaluation
+scikit-learn + custom scripts
+Metrics and error analysis
+18. Suggested Repository Layout
+FinGuard-India/├── app/│   └── streamlit_app.py├── data/│   ├── regulations/│   └── processed/├── datasets/│   ├── taxonomy/│   ├── train.jsonl│   ├── validation.jsonl│   └── test.jsonl├── src/│   ├── ingestion/│   │   ├── pdf_extract.py│   │   └── clean_text.py│   ├── taxonomy/│   │   ├── embed.py│   │   └── cluster.py│   ├── retrieval/│   │   ├── build_index.py│   │   └── retrieve.py│   ├── guard/│   │   ├── baseline.py│   │   ├── train.py│   │   └── inference.py│   ├── chatbot/│   │   └── pipeline.py│   └── evaluation/│       ├── metrics.py│       └── error_analysis.py├── experiments/├── notebooks/├── requirements.txt└── README.md
+19. Recommended Order of Work
+Freeze the initial Indian regulatory scope.
+Collect about 10 official documents and metadata.
+Extract and quality-check the text.
+Extract compliance points.
+Generate embeddings and inspect HDBSCAN clusters.
+Human-review and freeze the first taxonomy.
+Create a small labeled benchmark.
+Build a prompted baseline guard.
+Build FAISS-based regulatory retrieval.
+Build the two-checkpoint chatbot.
+Create adversarial/jailbreak evaluation examples.
+Fine-tune the guard if the baseline is insufficient.
+Run baseline vs proposed-system experiments.
+Perform category-level and failure-case analysis.
+Only then finalize the research claim and paper.
+20. What NOT to Do
+Do not download thousands of PDFs before validating the pipeline.
+Do not copy the FinGuard Chinese taxonomy and relabel it as Indian.
+Do not use blogs as the primary source of regulatory truth.
+Do not let an LLM-generated label become the only ground truth.
+Do not evaluate only on questions containing obvious keywords such as 'fraud' or 'AML'.
+Do not claim legal certainty from a model prediction.
+Do not compare only final chatbot answers; separately evaluate query detection, response detection, retrieval, and end-to-end behavior.
+Do not choose the final novelty claim until the baseline and failure analysis are complete.
+21. First Milestone — Exactly What To Do Now
+Your immediate task is deliberately small. Do not code the LLM yet.
+Create the FinGuard-India repository/folder structure.
+Choose the first regulator/domain (recommended: SEBI securities/investor-facing compliance).
+Download approximately 10 relevant documents from the official SEBI legal/regulatory pages.
+Create regulations.csv with source metadata.
+Put the PDFs in data/regulations/sebi/.
+Pick one PDF and successfully extract its text with PyMuPDF.
+Manually inspect the extracted text against the PDF.
+Commit this as Milestone 1.
+After Milestone 1, the next implementation task is a small PDF-to-structured-JSON script. Do not proceed to taxonomy or model training until extraction quality is acceptable.
+22. Important Research/Safety Note
+This system is a research prototype for regulatory-compliance detection. Financial regulations change, jurisdiction and product context matter, and a model classification is not itself a legal determination. Use current official regulatory sources, retain source/version metadata, and present regulatory evidence with appropriate uncertainty.
+End of implementation guide

@@ -1,0 +1,56 @@
+[
+  {
+    "category_id": "C01",
+    "category_name": "Insider Trading & UPSI Handling",
+    "definition": "Unlawful communication, procurement, or trading while in possession of Unpublished Price Sensitive Information (UPSI), and non-compliance with statutory trading plans or insider disclosures under SEBI (PIT) Regulations.",
+    "source_rule_ids": "SEBI_PIT_001;SEBI_PIT_002;SEBI_PIT_003;SEBI_PIT_004;SEBI_PIT_005;SEBI_KYC_004"
+  },
+  {
+    "category_id": "C02",
+    "category_name": "Fraudulent & Unfair Trade Practices (PFUTP) / Market Manipulation",
+    "definition": "Deceptive schemes, circular trading, wash trades, price rigging, artificial volume fabrication, pump-and-dump campaigns, front-running, and spoofing/layering in order books under SEBI (PFUTP) Regulations.",
+    "source_rule_ids": "SEBI_PFUTP_001;SEBI_PFUTP_002;SEBI_PFUTP_003;SEBI_PFUTP_004;SEBI_PFUTP_005;SEBI_INT_001;SEBI_INT_003;SEBI_SURV_001;SEBI_SURV_003;SEBI_LODR_001;SEBI_LODR_003"
+  },
+  {
+    "category_id": "C03",
+    "category_name": "Investment Advisory & Finfluencer Violations",
+    "definition": "Operating as an unregistered investment adviser, offering guaranteed/assured returns, engaging in profit-sharing arrangements, failing suitability/risk profiling, or taking illicit commissions under SEBI (IA) Regulations.",
+    "source_rule_ids": "SEBI_IA_001;SEBI_IA_003"
+  },
+  {
+    "category_id": "C04",
+    "category_name": "Research Analyst Misconduct & Conflict of Interest",
+    "definition": "Publishing research recommendations without SEBI registration, front-running own research calls (scalping), failing mandatory disclosure of personal/banking conflicts of interest, or failing audit record retention under SEBI (RA) Regulations.",
+    "source_rule_ids": "SEBI_RA_001;SEBI_RA_002;SEBI_RA_003;SEBI_RA_004"
+  },
+  {
+    "category_id": "C05",
+    "category_name": "AML / CFT & Know Your Client (KYC) Non-Compliance",
+    "definition": "Operating fictitious/benami/anonymous accounts, evading Customer Due Diligence (CDD/EDD), failure to report suspicious transactions (STR) to FIU-IND, or tipping off clients under PMLA and SEBI KYC Master Circular.",
+    "source_rule_ids": "SEBI_IA_002;SEBI_IA_004;SEBI_IA_005;SEBI_KYC_001;SEBI_KYC_002;SEBI_KYC_003;SEBI_SURV_002;SEBI_ALGO_002;SEBI_ALGO_003;SEBI_GRIEV_003"
+  },
+  {
+    "category_id": "C06",
+    "category_name": "Intermediary Conduct & Client Protection",
+    "definition": "Breach of fiduciary integrity, leaking client orders, failure to maintain Chinese Walls between dealing and proprietary desks, or portfolio churning to extract excessive brokerage fees under SEBI Intermediaries Code.",
+    "source_rule_ids": "SEBI_INT_002;SEBI_INT_004"
+  },
+  {
+    "category_id": "C07",
+    "category_name": "Algorithmic & High-Frequency Trading Safeguards",
+    "definition": "Deploying unapproved algorithmic trading strategies, bypassing pre-trade risk controls (order limits, price bands, kill-switch), or providing unvetted automated bot APIs to retail investors without compliance checks.",
+    "source_rule_ids": "SEBI_ALGO_001"
+  },
+  {
+    "category_id": "C08",
+    "category_name": "Corporate Disclosure & Material Event Timelines",
+    "definition": "Withholding or delaying material price-sensitive corporate announcements, violating 30-minute/12-hour LODR filing timelines, or failing to verify/clarify circulating market rumors under SEBI (LODR) Regulations.",
+    "source_rule_ids": "SEBI_LODR_002"
+  },
+  {
+    "category_id": "C09",
+    "category_name": "Investor Grievance Redressal & SCORES Compliance",
+    "definition": "Failure to address investor complaints within statutory 21 calendar days on SCORES 2.0, non-compliance with ODR arbitration frameworks, or actions leading to demat account freeze under SEBI Act.",
+    "source_rule_ids": "SEBI_GRIEV_001;SEBI_GRIEV_002"
+  }
+]
