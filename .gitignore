@@ -51,3 +51,6 @@ desktop.ini
 
 # Streamlit
 .streamlit/
+
+# Local work doc
+REMAINING_WORK.md
